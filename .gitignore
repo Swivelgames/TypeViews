@@ -1,0 +1,17 @@
+*DS_Store*
+*DS_Store
+node_modules
+*sublime*
+npm-debug.log
+/*/npm-debug.log
+*bin*
+/bin
+/bin/*
+/app/built
+/app/built/*
+/.tmp
+/.tmp/*
+/.meta
+/.meta/*
+compiled/
+compiled/*
