@@ -1,4 +1,4 @@
-/*module DataSources {
+namespace DataSources {
 	export var TestData = new ViewDataSource({
 		"pageTitle": "Testing",
 		"content1": "content1",
@@ -7,4 +7,3 @@
 		"footerText": "Copyright (c) 2016 Joseph Dalrymple"
 	});
 }
-*/

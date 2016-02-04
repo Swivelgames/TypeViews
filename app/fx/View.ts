@@ -6,18 +6,31 @@ class View {
 	_watchers: Array<Function>;
 	ViewData: Object;
 	_children: Array<View>;
+	contentNodes: Array<Object>;
+	dataSourceLink: DataSourceLink;
 
 	constructor(private viewElement: HTMLElement, data?: ViewDataSource) {
 		this._children = [];
 		this._watchers = [];
 		this.viewName = this.constructor["name"];
+
+		this.initData(data);
+	}
+
+	initData(data?: ViewDataSource){
 		this.data = data || new ViewDataSource(this.getInitialData());
 
+		this.data.setProperty("children", Array.prototype.slice.apply(this.viewElement["childNodes"]));
+
+		this.setDataFromAttributes();
+
+		this.setDataFromSources();
+	}
+
+	setDataFromAttributes() {
 		var viewAttributes = Array.prototype.slice.apply(
 			this.viewElement.attributes
 		);
-
-		this.data.setProperty("children", Array.prototype.slice.apply(this.viewElement["childNodes"]));
 
 		for(var attr of viewAttributes) {
 			var attrName = attr.name;
@@ -27,7 +40,16 @@ class View {
 		}
 	}
 
+	setDataFromSources() {
+		if(!this["DataSources"] || typeof this["DataSources"] !== "function") return;
+
+		var otherSources = this.DataSources();
+
+		this.dataSourceLink = new DataSourceLink( this.data, otherSources );
+	}
+
 	getInitialData() { return {}; }
+	DataSources() { return []; }
 
 	setData(newData: Object) {
 		for(var key in newData) {
@@ -65,14 +87,15 @@ class View {
 	}
 
 	bindDataToDom(unsetAll?: boolean) {
-		if(unsetAll===true) this.data.watchers = {};
+		var dom = this.dom, contentNodes;
 
-		var dom = this.dom,
-			contentNodes = this.getContentNodes(dom);
+		contentNodes = this.contentNodes = this.getContentNodes(dom);
 
 		for(var content of contentNodes) {
 			var contentName = (function(content){
 				this.data.onChange(content.name, function(name, val){
+					if(!val) val = " ";
+
 					if(content.attributeNode
 					&&(!content.attributeNode.nodeValue
 					|| !content.attributeNode.ownerElement)) {
@@ -146,7 +169,7 @@ class View {
 	parseTextNode(textNode: Node, arr: Array<any>, attributeNode?: Node) {
 		if(textNode.nodeType !== document.TEXT_NODE) return arr;
 
-		var reg = /\{\{[A-Z0-9_-]+\}\}/ig,
+		var reg = /\{\{[A-Z0-9_\-\.]+\}\}/ig,
 			val = textNode.nodeValue,
 			split = val.split(reg),
 			matches = val.match(reg),

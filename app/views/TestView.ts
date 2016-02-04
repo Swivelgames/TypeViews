@@ -16,7 +16,7 @@ namespace AppViews {
 
 		render() {
 			return (`
-				<b>{{text}}!! :D {{testing}}</b>
+				<b>{{text}}!! :D {{TestData.content1}}</b>
 			`);
 		}
 	}

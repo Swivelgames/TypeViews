@@ -1,50 +1,83 @@
-class ViewDataSource {
-	data: Object;
-	watchers: Object;
+class ViewDataSource extends Eventful {
+	data: ObjectPathResolver;
 
 	constructor(data?: Object) {
-		this.data = data || {};
-		this.watchers = {};
+		super();
+
+		this.data = new ObjectPathResolver(data || {}, true);
 	}
 
 	getAllPropertyNames() {
-		return Object.keys(this.data);
+		return Object.keys(this.data["obj"]);
+	}
+
+	getAllProperties(hostObj?: Object) {
+		if(JSON.stringify(hostObj) === "{}") return hostObj;
+
+		var dataObj = hostObj || this.data["obj"];
+		var ret = {};
+
+		for(var key in dataObj) {
+			var keyVal = dataObj[key];
+			if(typeof keyVal === "object") {
+				ret[key] = this.getAllProperties(keyVal);
+			} else {
+				ret[key] = keyVal;
+			}
+		}
+
+		return ret;
 	}
 
 	getProperty(name: string) {
-		return this.data.hasOwnProperty(name) ? this.data[name] : void 0;
+		var ret = this.data.get(name);
+		if(ret.owner instanceof ViewDataSource) {
+			return ret.owner.getProperty( ret.key );
+		}
+		if(ret.value instanceof Array) return ret.value.slice().map( (v) => !(v instanceof Array) && typeof v === "object" ? this.getAllProperties(v) : v );
+		if(typeof ret.value === "object") return this.getAllProperties(ret.value);
+		return ret.value;
 	}
 
 	setProperty(name: string, value: any) {
-		this.data[name] = value;
-		this.triggerChange(name);
+		if(name.indexOf(".") > -1) {
+			var root = name.split(".").reverse().pop();
+			var raw = this.data.getRaw();
+			if(raw.hasOwnProperty(root)
+			&& raw[root] instanceof ViewDataSource) {
+				raw[root].setProperty( name.substr(name.indexOf(".") + 1), value );
+				return;
+			}
+		}
+
+		this.data.set(name, value);
+		this.triggerChange( name );
 	}
 
 	onChange(name: string, callback: Function) {
-		if(!this.watchers.hasOwnProperty(name)) {
-			this.watchers[name] = [];
-		}
-
-		this.watchers[name].push(callback);
-
-		return true;
-	}
-
-	unsetListener(name: string, callback: Function) {
-		if(this.watchers.hasOwnProperty(name)) {
-			var i, watchers = this.watchers[name];
-
-			while( (i = watchers.indexOf(callback)) > -1 ) {
-				watchers.splice(i,1);
+		if(name.indexOf(".") > -1) {
+			var root = name.split(".").reverse().pop();
+			var raw = this.data.getRaw();
+			if(raw.hasOwnProperty(root)
+			&& raw[root] instanceof ViewDataSource) {
+				this.on( root, (source, host) => {
+					return callback( name, raw[root].getProperty(
+						name.substr(name.indexOf(".") + 1)
+					));
+				});
 			}
 		}
+		this.on(name, callback);
 	}
 
 	triggerChange(name: string) {
-		if(this.watchers.hasOwnProperty(name)) {
-			for(var callback of this.watchers[name]) {
-				callback(name, this.data[name] || void 0);
-			}
-		}
+		this.trigger(name, this.data.get(name, true).value );
+		this.trigger("*", this.getAllProperties() );
 	}
+
+	unsetListener(name: string, callback: Function) {
+		this.off(name, callback);
+	}
+
+	getNamespaceStringRoot(ns: string) { return ns.split(".").reverse().pop() }
 }
