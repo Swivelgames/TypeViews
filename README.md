@@ -10,7 +10,13 @@ The following classes are used within this project:
 
  * View (An extendable class for creating "Components")
  * ViewDataSource (Stores data, fires events when values are changed)
+
+ * Eventful (contains all event-related methods)
+ * ObjectPathResolver (contains all abstracted key reference utilities)
+ * DataSourceLink (used to allow a DataSource within a DataSource)
+
  * DOMUtilities (A collection of DOM utilities)
+
 
 Each of these can be found within the `app/fx/` directory.
 
